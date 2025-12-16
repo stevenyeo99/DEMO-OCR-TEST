@@ -1,0 +1,54 @@
+[
+  {
+    "if": { "path": "insured.identity.is_hk_permanent_resident", "equals": true },
+    "set_null": [
+      "insured.identity.non_hk_permanent_id",
+      "insured.identity.passport_no_or_birth_certificate_no"
+    ]
+  },
+  {
+    "if": { "path": "insured.identity.is_hk_permanent_resident", "equals": true },
+    "when_empty": ["insured.identity.non_hk_permanent_id"],
+    "when_not_empty": ["insured.identity.raw_line_3_id_text"],
+    "set_from": {
+      "source": "insured.identity.raw_line_3_id_text",
+      "target": "insured.identity.non_hk_permanent_id"
+    }
+  },
+  {
+    "if": { "path": "insured.identity.is_non_hk_permanent_resident", "equals": true },
+    "set_null": ["insured.identity.hk_id_card_no_or_birth_certificate_no"]
+  },
+  {
+    "if": { "path": "insured.date_of_birth_ymd", "not_empty": true },
+    "when_empty": [
+      "insured.date_of_birth.year",
+      "insured.date_of_birth.month",
+      "insured.date_of_birth.day"
+    ],
+    "split_date": {
+      "source": "insured.date_of_birth_ymd",
+      "targets": {
+        "year": "insured.date_of_birth.year",
+        "month": "insured.date_of_birth.month",
+        "day": "insured.date_of_birth.day"
+      }
+    }
+  },
+  {
+    "if": { "path": "policyholder.date_of_birth_ymd", "not_empty": true },
+    "when_empty": [
+      "policyholder.date_of_birth.year",
+      "policyholder.date_of_birth.month",
+      "policyholder.date_of_birth.day"
+    ],
+    "split_date": {
+      "source": "policyholder.date_of_birth_ymd",
+      "targets": {
+        "year": "policyholder.date_of_birth.year",
+        "month": "policyholder.date_of_birth.month",
+        "day": "policyholder.date_of_birth.day"
+      }
+    }
+  }
+]

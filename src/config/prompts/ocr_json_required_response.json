@@ -1,0 +1,95 @@
+{
+    "insured": {
+        "name": {
+            "raw_full_name_text": false,
+            "english_surname": true,
+            "english_given_name": true,
+            "chinese_name": true
+        },
+        "gender": true,
+        "date_of_birth_ymd": true,
+        "date_of_birth": {
+            "year": true,
+            "month": true,
+            "day": true
+        },
+        "place_of_birth": {
+            "country": true,
+            "city_or_town": true
+        },
+        "raw_item5_nationality_row_text": false,
+        "nationality": true,
+        "identity": {
+            "is_hk_permanent_resident": true,
+            "is_non_hk_permanent_resident": true,
+            "raw_line_3_id_text": true,
+            "raw_line_4_passport_text": true,
+            "hk_id_card_no_or_birth_certificate_no": true,
+            "non_hk_permanent_id": true,
+            "passport_no_or_birth_certificate_no": true
+        },
+        "relation_with_proposed_insured": true,
+        "employee_name": true,
+        "office_location": {
+            "address_layout_mode": false,
+            "flat_or_unit": true,
+            "floor": true,
+            "block": true,
+            "building_or_estate_name": true,
+            "street_name_and_number": true,
+            "city_or_district": true,
+            "postal_code": true,
+            "country": true
+        },
+        "nature_of_employee_business": true,
+        "job": {
+            "title": true,
+            "duties": true
+        },
+        "education": true
+    },
+    "policyholder": {
+        "name": {
+            "english_surname": true,
+            "english_given_name": true,
+            "chinese_name": true
+        },
+        "gender": true,
+        "date_of_birth_ymd": true,
+        "date_of_birth": {
+            "year": true,
+            "month": true,
+            "day": true
+        },
+        "place_of_birth": {
+            "city": true,
+            "country": true
+        },
+        "nationality": true,
+        "identity": {
+            "hk_id_card_no": true,
+            "non_hk_permanent_id": true,
+            "passport_no": true,
+            "is_business_id": true,
+            "business_no": true
+        },
+        "relation_with_proposed_insured": true,
+        "employee_name": true,
+        "office_location": {
+            "flat_or_unit": true,
+            "floor": true,
+            "block": true,
+            "building_or_estate_name": true,
+            "street_name_and_number": true,
+            "city_or_district": true,
+            "postal_code": true,
+            "country": true
+        },
+        "nature_of_employee_business": true,
+        "job": {
+            "title": true,
+            "duties": true
+        },
+        "education": true
+    }
+}

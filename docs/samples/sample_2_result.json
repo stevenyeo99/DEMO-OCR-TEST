@@ -1,0 +1,104 @@
+{
+    "insured": {
+        "name": {
+            "english_surname": null,
+            "english_given_name": null,
+            "chinese_name": "李"
+        },
+        "gender": {
+            "男性": true,
+            "女性": false
+        },
+        "date_of_birth_ymd": "2016-12-23",
+        "date_of_birth": {
+            "year": "2016",
+            "month": "12",
+            "day": "23"
+        },
+        "place_of_birth": {
+            "country": "中國",
+            "city_or_town": "安徽蕪湖"
+        },
+        "nationality": "中國",
+        "identity": {
+            "is_hk_permanent_resident": false,
+            "is_non_hk_permanent_resident": true,
+            "hk_id_card_no_or_birth_certificate_no": null,
+            "non_hk_permanent_id": "340203198501120022",
+            "passport_no_or_birth_certificate_no": "C0222"
+        },
+        "relation_with_proposed_insured": "不適用",
+        "employee_name": "兒童",
+        "contact": {
+            "flat_or_unit": null,
+            "floor": null,
+            "block": null,
+            "building_name": "蕪湖經濟技術開發區",
+            "district": "鳳鳴湖北路",
+            "contact_person": null,
+            "telephone_no": null,
+            "email_address": null
+        },
+        "nature_of_employee_business": "汽車制造",
+        "job": {
+            "title": "人力行政主管",
+            "duties": "管理"
+        },
+        "education": {
+            "小學或以下": false,
+            "中學/預科": false,
+            "大專或以上": true
+        }
+    },
+    "policyholder": {
+        "name": {
+            "english_surname": null,
+            "english_given_name": null,
+            "chinese_name": "李"
+        },
+        "gender": {
+            "男性": false,
+            "女性": true
+        },
+        "date_of_birth_ymd": "1985-01-12",
+        "date_of_birth": {
+            "year": "1985",
+            "month": "01",
+            "day": "12"
+        },
+        "place_of_birth": {
+            "city": "安徽蕪湖",
+            "country": "中國"
+        },
+        "nationality": "中國",
+        "identity": {
+            "hk_id_card_no": null,
+            "non_hk_permanent_id": null,
+            "passport_no": null,
+            "is_business_id": false,
+            "business_no": null
+        },
+        "relation_with_proposed_insured": "不適用",
+        "employee_name": null,
+        "contact": {
+            "flat_or_unit": null,
+            "floor": null,
+            "block": null,
+            "building_name": null,
+            "district": null,
+            "contact_person": null,
+            "telephone_no": null,
+            "email_address": null
+        },
+        "nature_of_employee_business": null,
+        "job": {
+            "title": null,
+            "duties": null
+        },
+        "education": {
+            "小學或以下": false,
+            "中學/預科": false,
+            "大專或以上": true
+        }
+    }
+}

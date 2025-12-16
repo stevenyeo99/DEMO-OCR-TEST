@@ -1,0 +1,112 @@
+insured (left) - policyholder (right)
+
+(insured)
+1. 
+- name.english_surname
+- name.english_surname
+- name.chinese_name
+
+2.
+- gender (male or female)
+
+3.
+- date_of_birth.year
+- date_of_birth.month
+- date_of_birth.day
+
+4.
+- place_of_birth.city
+- place_of_birth.country
+
+5.
+- nationality
+
+6.
+- identity.is_hk_id
+- identity.hk_id_card_no_or_birth_certificate_no
+- identity.is_non_hk_id
+- identity.non_hk_permanent_id
+- identity.passport_no_or_birth_certificate_no
+
+7.
+- relation_with_proposed_insured
+
+8.
+- employee_name
+
+9.
+- office_location.flat_or_unit
+- office_location.floor
+- office_location.block
+- office_location.building_or_estate_name
+- office_location.street_name_and_number
+- office_location.city_or_district
+- office_location.postal_code
+- office_location.country
+
+10.
+nature_of_employee_business
+
+11.
+job.title
+job.duties
+
+12.
+education.level (primary_school_or_below, secondary_school_or_pre_university, university_or_above)
+
+
+
+
+(policyholder)
+1. 
+- name.english_surname
+- name.english_surname
+- name.chinese_name
+
+2.
+- gender (male or female)
+
+3.
+- date_of_birth.year
+- date_of_birth.month
+- date_of_birth.day
+
+4.
+- place_of_birth.city
+- place_of_birth.country
+
+5.
+- nationality
+
+6.
+- identity.hk_id_card_no
+- identity.non_hk_permanent_id
+- identity.passport_no
+- identity.is_business_id
+- identity.business_no
+
+7.
+- relation_with_proposed_insured
+
+8.
+- employee_name
+
+9.
+- office_location.flat_or_unit
+- office_location.floor
+- office_location.block
+- office_location.building_or_estate_name
+- office_location.street_name_and_number
+- office_location.city_or_district
+- office_location.postal_code
+- office_location.country
+
+10.
+nature_of_employee_business
+
+11.
+job.title
+job.duties
+
+12.
+education.level (primary_school_or_below, secondary_school_or_pre_university, university_or_above)

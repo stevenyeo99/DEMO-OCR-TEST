@@ -1,0 +1,356 @@
+"use strict";
+
+const fs = require("fs/promises");
+const path = require("path");
+const { defaultSystemPrompt, defaultJsonSchema } = require("../config/ocrConfig");
+const { callLmStudio } = require("../services/lmService");
+const { preprocessImage } = require("../services/imagePreprocess");
+const { cropTopBottom, defaultCropOptions } = require("../services/imageCrop");
+const requiredResponseMask = require("../config/prompts/ocr_json_required_response.json");
+const postProcessRules = require("../config/prompts/ocr_json_postprocess_rules.json");
+
+async function handleOcrJson(req, res) {
+  const { paths, systemPrompt, jsonSchema, model, preprocess } = req.body || {};
+
+  if (!Array.isArray(paths) || paths.length === 0) {
+    return res.status(400).json({ error: "paths must be a non-empty array of image file paths" });
+  }
+
+  const parsedSchema = resolveSchema(jsonSchema, defaultJsonSchema);
+  if (parsedSchema instanceof Error) {
+    return res.status(400).json({ error: `json schema parse error: ${parsedSchema.message}` });
+  }
+
+  const preprocessOptions = resolvePreprocess(preprocess);
+
+  let images;
+  try {
+    images = await Promise.all(paths.map((imagePath) => readImageAsDataUrl(imagePath, preprocessOptions)));
+  } catch (error) {
+    return res.status(400).json({ error: `failed to read images: ${error.message}` });
+  }
+
+  const prompt = systemPrompt || defaultSystemPrompt || "You are an OCR assistant. Return valid JSON only.";
+
+  try {
+    const result = await callLmStudio({ prompt, images, schema: parsedSchema, model });
+    const content = extractContent(result.data);
+    const parsedContent = parseJsonContent(content);
+    const filtered = filterResponseByRequired(parsedContent, requiredResponseMask);
+    const postProcessed = applyPostprocessRules(filtered, postProcessRules);
+    return res.json(postProcessed);
+  } catch (error) {
+    return res
+      .status(error.status || 502)
+      .json({ error: error.message || "lm studio request error", details: error.details || error.message });
+  }
+}
+
+async function handleOcrJsonCrop(req, res) {
+  const { paths, systemPrompt, jsonSchema, model, preprocess, crop } = req.body || {};
+
+  if (!Array.isArray(paths) || paths.length === 0) {
+    return res.status(400).json({ error: "paths must be a non-empty array of image file paths" });
+  }
+
+  const parsedSchema = resolveSchema(jsonSchema, defaultJsonSchema);
+  if (parsedSchema instanceof Error) {
+    return res.status(400).json({ error: `json schema parse error: ${parsedSchema.message}` });
+  }
+
+  const preprocessOptions = resolvePreprocess(preprocess);
+  const cropOptions = resolveCropOptions(crop);
+
+  let images;
+  try {
+    const variants = await Promise.all(
+      paths.map((imagePath) => readImageWithCropVariants(imagePath, preprocessOptions, cropOptions))
+    );
+    images = variants.flat();
+  } catch (error) {
+    return res.status(400).json({ error: `failed to read images: ${error.message}` });
+  }
+
+  const prompt = systemPrompt || defaultSystemPrompt || "You are an OCR assistant. Return valid JSON only.";
+
+  try {
+    const result = await callLmStudio({ prompt, images, schema: parsedSchema, model });
+    const content = extractContent(result.data);
+    const parsedContent = parseJsonContent(content);
+    const filtered = filterResponseByRequired(parsedContent, requiredResponseMask);
+    const postProcessed = applyPostprocessRules(filtered, postProcessRules);
+    return res.json(postProcessed);
+  } catch (error) {
+    return res
+      .status(error.status || 502)
+      .json({ error: error.message || "lm studio request error", details: error.details || error.message });
+  }
+}
+
+function resolveSchema(inputSchema, envSchema) {
+  if (!inputSchema && !envSchema) return null;
+
+  if (inputSchema && typeof inputSchema === "object") return inputSchema;
+  if (!inputSchema && envSchema && typeof envSchema === "object") return envSchema;
+
+  const raw = typeof inputSchema === "string" ? inputSchema : envSchema;
+  if (!raw) return null;
+
+  try {
+    return JSON.parse(raw);
+  } catch (error) {
+    return error;
+  }
+}
+
+function resolvePreprocess(raw) {
+  if (raw === false || raw === null) return null;
+  if (raw === true || typeof raw === "undefined") return {}; // default gentle pipeline
+  if (typeof raw === "object") return raw;
+  return null;
+}
+
+function resolveCropOptions(raw) {
+  if (raw && typeof raw === "object") return { ...defaultCropOptions, ...raw };
+  return { ...defaultCropOptions };
+}
+
+async function readImageAsDataUrl(imagePath, preprocessOptions = null) {
+  const base = await loadImageBuffer(imagePath, preprocessOptions);
+  const base64 = base.buffer.toString("base64");
+  return {
+    path: base.path,
+    dataUrl: `data:${base.mime};base64,${base64}`,
+    savedPath: base.savedPath,
+  };
+}
+
+async function readImageWithCropVariants(imagePath, preprocessOptions = null, cropOptions = {}) {
+  const base = await loadImageBuffer(imagePath, preprocessOptions);
+  const base64 = base.buffer.toString("base64");
+  const original = {
+    path: base.path,
+    dataUrl: `data:${base.mime};base64,${base64}`,
+    savedPath: base.savedPath,
+    variant: "full",
+  };
+
+  const cropped = await cropTopBottom(base.buffer, base.mime, { ...cropOptions, sourcePath: base.path });
+  const variants = [
+    {
+      path: base.path,
+      dataUrl: `data:${cropped.top.mime};base64,${cropped.top.buffer.toString("base64")}`,
+      variant: "top_half_zoom",
+      savedPath: cropped.top.savedPath,
+    },
+    {
+      path: base.path,
+      dataUrl: `data:${cropped.bottom.mime};base64,${cropped.bottom.buffer.toString("base64")}`,
+      variant: "bottom_half_zoom",
+      savedPath: cropped.bottom.savedPath,
+    },
+  ];
+
+  return [original, ...variants];
+}
+
+async function loadImageBuffer(imagePath, preprocessOptions = null) {
+  const absolutePath = path.isAbsolute(imagePath) ? imagePath : path.join(process.cwd(), imagePath);
+
+  if (preprocessOptions) {
+    const processed = await preprocessImage(absolutePath, preprocessOptions);
+    return {
+      buffer: processed.buffer,
+      mime: processed.mime,
+      path: processed.path || absolutePath,
+      savedPath: processed.savedPath,
+    };
+  }
+
+  const buffer = await fs.readFile(absolutePath);
+  const mime = guessMimeType(absolutePath);
+  return {
+    buffer,
+    mime,
+    path: absolutePath,
+  };
+}
+
+function guessMimeType(filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  switch (ext) {
+    case ".jpg":
+    case ".jpeg":
+      return "image/jpeg";
+    case ".png":
+      return "image/png";
+    case ".gif":
+      return "image/gif";
+    case ".webp":
+      return "image/webp";
+    default:
+      return "application/octet-stream";
+  }
+}
+
+function extractContent(data) {
+  if (!data || !data.choices || !Array.isArray(data.choices) || data.choices.length === 0) {
+    return null;
+  }
+  const choice = data.choices[0];
+  if (choice && choice.message && typeof choice.message.content !== "undefined") {
+    return choice.message.content;
+  }
+  return null;
+}
+
+function parseJsonContent(content) {
+  if (content === null || typeof content === "undefined") {
+    return null;
+  }
+  if (typeof content === "object") {
+    return content;
+  }
+  if (typeof content === "string") {
+    try {
+      return JSON.parse(content);
+    } catch (error) {
+      return { _raw: content, _error: "failed to parse JSON content" };
+    }
+  }
+  return { _raw: content, _error: "unexpected content type" };
+}
+
+function filterResponseByRequired(data, mask) {
+  if (!mask || typeof mask !== "object" || data === null || typeof data !== "object") return data;
+  const result = Array.isArray(mask) ? [] : {};
+
+  for (const [key, requirement] of Object.entries(mask)) {
+    if (requirement === true) {
+      if (Object.prototype.hasOwnProperty.call(data, key)) {
+        result[key] = data[key];
+      }
+      continue;
+    }
+
+    if (requirement && typeof requirement === "object" && !Array.isArray(requirement)) {
+      const child = filterResponseByRequired(data[key] || {}, requirement);
+      if (hasContent(child)) {
+        result[key] = child;
+      }
+    }
+  }
+
+  return result;
+}
+
+function hasContent(value) {
+  if (value === null || typeof value === "undefined") return false;
+  if (Array.isArray(value)) return value.length > 0;
+  if (typeof value === "object") return Object.keys(value).length > 0;
+  return true;
+}
+
+function applyPostprocessRules(data, rules) {
+  if (!rules || !Array.isArray(rules) || !data || typeof data !== "object") return data;
+
+  for (const rule of rules) {
+    if (!rule || !rule.if) continue;
+
+    const actual = getPath(data, rule.if.path);
+    const matches = rule.if.not_empty ? !isEmptyValue(actual) : matchEquals(actual, rule.if.equals);
+    if (!matches) continue;
+
+    const whenEmpty = Array.isArray(rule.when_empty) ? rule.when_empty : [];
+    const whenNotEmpty = Array.isArray(rule.when_not_empty) ? rule.when_not_empty : [];
+    const whenEmptyOk = whenEmpty.every((p) => isEmptyValue(getPath(data, p)));
+    const whenNotEmptyOk = whenNotEmpty.every((p) => !isEmptyValue(getPath(data, p)));
+    if (!whenEmptyOk || !whenNotEmptyOk) continue;
+
+    if (rule.set_null) {
+      const targets = Array.isArray(rule.set_null) ? rule.set_null : [rule.set_null];
+      for (const target of targets) {
+        setPath(data, target, null);
+      }
+    }
+
+    if (rule.set_from && rule.set_from.source && rule.set_from.target) {
+      const sourceVal = getPath(data, rule.set_from.source);
+      if (!isEmptyValue(sourceVal)) {
+        setPath(data, rule.set_from.target, sourceVal);
+      }
+    }
+
+    if (rule.split_date) {
+      const sourceVal = getPath(data, rule.split_date.source);
+      const parts = parseYmd(sourceVal);
+      if (parts) {
+        const targets = rule.split_date.targets || {};
+        if (targets.year) setPath(data, targets.year, parts.year);
+        if (targets.month) setPath(data, targets.month, parts.month);
+        if (targets.day) setPath(data, targets.day, parts.day);
+      }
+    }
+  }
+
+  return data;
+}
+
+function matchEquals(actual, expected) {
+  if (typeof expected === "undefined") {
+    return actual === true || actual === "true";
+  }
+  return Object.is(actual, expected);
+}
+
+function getPath(obj, pathString) {
+  if (!pathString || typeof pathString !== "string") return undefined;
+  return pathString.split(".").reduce((acc, key) => {
+    if (acc && typeof acc === "object" && Object.prototype.hasOwnProperty.call(acc, key)) {
+      return acc[key];
+    }
+    return undefined;
+  }, obj);
+}
+
+function setPath(obj, pathString, value) {
+  if (!pathString || typeof pathString !== "string" || !obj || typeof obj !== "object") return;
+  const parts = pathString.split(".");
+  let current = obj;
+  for (let i = 0; i < parts.length; i++) {
+    const key = parts[i];
+    if (i === parts.length - 1) {
+      current[key] = value;
+      return;
+    }
+    if (!current[key] || typeof current[key] !== "object") {
+      current[key] = {};
+    }
+    current = current[key];
+  }
+}
+
+function isEmptyValue(value) {
+  if (value === null || typeof value === "undefined") return true;
+  if (typeof value === "string") return value.trim() === "";
+  if (Array.isArray(value)) return value.length === 0;
+  if (typeof value === "object") return Object.keys(value).length === 0;
+  return false;
+}
+
+function parseYmd(value) {
+  if (typeof value !== "string") return null;
+  const match = value.trim().match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+  if (!match) return null;
+  const [, y, m, d] = match;
+  return {
+    year: y,
+    month: m.padStart(2, "0"),
+    day: d.padStart(2, "0"),
+  };
+}
+
+module.exports = {
+  handleOcrJson,
+  handleOcrJsonCrop,
+};

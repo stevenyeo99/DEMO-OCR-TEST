@@ -1,0 +1,104 @@
+{
+    "insured": {
+        "name": {
+            "english_surname": "ZHANG",
+            "english_given_name": "YU",
+            "chinese_name": "张宇"
+        },
+        "gender": {
+            "男性": true,
+            "女性": false
+        },
+        "date_of_birth_ymd": "1978-07-08",
+        "date_of_birth": {
+            "year": "1978",
+            "month": "07",
+            "day": "08"
+        },
+        "place_of_birth": {
+            "country": "中国",
+            "city_or_town": "锦州市"
+        },
+        "nationality": "中国",
+        "identity": {
+            "is_hk_permanent_resident": false,
+            "is_non_hk_permanent_resident": true,
+            "hk_id_card_no_or_birth_certificate_no": null,
+            "non_hk_permanent_id": "21070319780908",
+            "passport_no_or_birth_certificate_no": "C59277"
+        },
+        "relation_with_proposed_insured": "不适用",
+        "employee_name": "锦州腾达汽车百货",
+        "contact": {
+            "flat_or_unit": "辽宁省锦州市凌河区",
+            "floor": "恒升现代城29号楼",
+            "block": "大厦或屋邨名",
+            "building_name": "恒升现代城29号楼",
+            "district": "辽宁省锦州市凌河区",
+            "contact_person": "汽车用品零售",
+            "telephone_no": "总经理",
+            "email_address": "管理"
+        },
+        "nature_of_employee_business": "汽车用品零售",
+        "job": {
+            "title": "总经理",
+            "duties": "管理"
+        },
+        "education": {
+            "小學或以下": false,
+            "中學/預科": false,
+            "大專或以上": true
+        }
+    },
+    "policyholder": {
+        "name": {
+            "english_surname": null,
+            "english_given_name": null,
+            "chinese_name": null
+        },
+        "gender": {
+            "男性": false,
+            "女性": false
+        },
+        "date_of_birth_ymd": null,
+        "date_of_birth": {
+            "year": null,
+            "month": null,
+            "day": null
+        },
+        "place_of_birth": {
+            "city": null,
+            "country": null
+        },
+        "nationality": null,
+        "identity": {
+            "hk_id_card_no": null,
+            "non_hk_permanent_id": null,
+            "passport_no": null,
+            "is_business_id": null,
+            "business_no": null
+        },
+        "relation_with_proposed_insured": null,
+        "employee_name": null,
+        "contact": {
+            "flat_or_unit": null,
+            "floor": null,
+            "block": null,
+            "building_name": null,
+            "district": null,
+            "contact_person": null,
+            "telephone_no": null,
+            "email_address": null
+        },
+        "nature_of_employee_business": null,
+        "job": {
+            "title": null,
+            "duties": null
+        },
+        "education": {
+            "小學或以下": false,
+            "中學/預科": false,
+            "大專或以上": false
+        }
+    }
+}

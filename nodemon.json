@@ -1,0 +1,7 @@
+{
+  "watch": ["src", "prompts", ".env"],
+  "ext": "js,json,md,env",
+  "ignore": ["node_modules", "logs", "tmp"],
+  "exec": "node ./src/bin/www",
+  "legacyWatch": true
+}
