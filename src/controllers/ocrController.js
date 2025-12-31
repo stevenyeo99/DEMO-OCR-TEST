@@ -8,6 +8,10 @@ const { preprocessImage } = require("../services/imagePreprocess");
 const { cropTopBottom, defaultCropOptions } = require("../services/imageCrop");
 const requiredResponseMask = require("../config/prompts/ocr_json_required_response.json");
 const postProcessRules = require("../config/prompts/ocr_json_postprocess_rules.json");
+const LEFT_PROMPT_PATH = path.join(__dirname, "../config/prompts/ocr_system_prompt_left.md");
+const RIGHT_PROMPT_PATH = path.join(__dirname, "../config/prompts/ocr_system_prompt_right.md");
+const LEFT_SCHEMA_PATH = path.join(__dirname, "../config/prompts/ocr_json_schema_left.json");
+const RIGHT_SCHEMA_PATH = path.join(__dirname, "../config/prompts/ocr_json_schema_right.json");
 
 async function handleOcrJson(req, res) {
   const { paths, systemPrompt, jsonSchema, model, preprocess } = req.body || {};
@@ -36,15 +40,83 @@ async function handleOcrJson(req, res) {
     const result = await callLmStudio({ prompt, images, schema: parsedSchema, model });
     const content = extractContent(result.data);
     const parsedContent = parseJsonContent(content);
-    const filtered = filterResponseByRequired(parsedContent, requiredResponseMask);
-    const postProcessed = applyPostprocessRules(filtered, postProcessRules);
-    return res.json(postProcessed);
+    const postProcessed = applyPostprocessRules(parsedContent, postProcessRules);
+    const filtered = filterResponseByRequired(postProcessed, requiredResponseMask);
+    return res.json(filtered);
   } catch (error) {
     return res
       .status(error.status || 502)
       .json({ error: error.message || "lm studio request error", details: error.details || error.message });
   }
 }
+
+async function handleOcrHalfJson(req, res) {
+  const { paths, model, preprocess } = req.body || {};
+
+  if (!Array.isArray(paths) || paths.length === 0) {
+    return res.status(400).json({ error: "paths must be a non-empty array of image file paths" });
+  }
+
+  const [promptLeft, promptRight, schemaLeft, schemaRight] = await Promise.all([
+    loadPromptFile(LEFT_PROMPT_PATH),
+    loadPromptFile(RIGHT_PROMPT_PATH),
+    loadJsonSchemaFile(LEFT_SCHEMA_PATH),
+    loadJsonSchemaFile(RIGHT_SCHEMA_PATH),
+  ]);
+
+  if (!promptLeft || !promptRight) {
+    return res.status(500).json({ error: "failed to load OCR system prompts for half processing" });
+  }
+
+  if (schemaLeft instanceof Error || schemaRight instanceof Error) {
+    const errors = [schemaLeft, schemaRight].filter((s) => s instanceof Error).map((s) => s.message);
+    return res.status(500).json({ error: `failed to load OCR schemas: ${errors.join("; ")}` });
+  }
+
+  const preprocessOptions = resolvePreprocess(preprocess);
+
+  let images;
+  try {
+    images = await Promise.all(paths.map((imagePath) => readImageAsDataUrl(imagePath, preprocessOptions)));
+  } catch (error) {
+    return res.status(400).json({ error: `failed to read images: ${error.message}` });
+  }
+
+  try {
+    const [leftResult, rightResult] = await Promise.all([
+      callLmStudio({ prompt: promptLeft, images, schema: schemaLeft || defaultJsonSchema, model }),
+      callLmStudio({ prompt: promptRight, images, schema: schemaRight || defaultJsonSchema, model }),
+    ]);
+
+    const leftParsed = parseJsonContent(extractContent(leftResult.data));
+    const rightParsed = parseJsonContent(extractContent(rightResult.data));
+
+    const leftPost = applyPostprocessRules(leftParsed, postProcessRules);
+    const rightPost = applyPostprocessRules(rightParsed, postProcessRules);
+
+    const leftFiltered = filterResponseByRequired(leftPost, requiredResponseMask);
+    const rightFiltered = filterResponseByRequired(rightPost, requiredResponseMask);
+
+    const combined = mergeResponses(leftFiltered, rightFiltered);
+    return res.json(combined);
+  } catch (error) {
+    return res
+      .status(error.status || 502)
+      .json({ error: error.message || "lm studio request error", details: error.details || error.message });
+  }
+}
+
+const handleOcrLeftJson = createSideHandler({
+  promptPath: LEFT_PROMPT_PATH,
+  schemaPath: LEFT_SCHEMA_PATH,
+  label: "left",
+});
+
+const handleOcrRightJson = createSideHandler({
+  promptPath: RIGHT_PROMPT_PATH,
+  schemaPath: RIGHT_SCHEMA_PATH,
+  label: "right",
+});
 
 async function handleOcrJsonCrop(req, res) {
   const { paths, systemPrompt, jsonSchema, model, preprocess, crop } = req.body || {};
@@ -77,8 +149,8 @@ async function handleOcrJsonCrop(req, res) {
     const result = await callLmStudio({ prompt, images, schema: parsedSchema, model });
     const content = extractContent(result.data);
     const parsedContent = parseJsonContent(content);
-    const filtered = filterResponseByRequired(parsedContent, requiredResponseMask);
-    const postProcessed = applyPostprocessRules(filtered, postProcessRules);
+    const postProcessed = applyPostprocessRules(parsedContent, postProcessRules);
+    const filtered = filterResponseByRequired(postProcessed, requiredResponseMask);
     return res.json(postProcessed);
   } catch (error) {
     return res
@@ -276,7 +348,8 @@ function applyPostprocessRules(data, rules) {
 
     if (rule.set_from && rule.set_from.source && rule.set_from.target) {
       const sourceVal = getPath(data, rule.set_from.source);
-      if (!isEmptyValue(sourceVal)) {
+      const shouldSet = !isEmptyValue(sourceVal) || rule.set_from.allow_null;
+      if (shouldSet) {
         setPath(data, rule.set_from.target, sourceVal);
       }
     }
@@ -297,6 +370,12 @@ function applyPostprocessRules(data, rules) {
 }
 
 function matchEquals(actual, expected) {
+  if (expected === true) {
+    return actual === true || actual === "true";
+  }
+  if (expected === false) {
+    return actual === false || actual === "false";
+  }
   if (typeof expected === "undefined") {
     return actual === true || actual === "true";
   }
@@ -350,7 +429,91 @@ function parseYmd(value) {
   };
 }
 
+async function loadPromptFile(filePath) {
+  try {
+    return await fs.readFile(filePath, "utf8");
+  } catch {
+    return null;
+  }
+}
+
+async function loadJsonSchemaFile(filePath) {
+  try {
+    const content = await fs.readFile(filePath, "utf8");
+    return JSON.parse(content);
+  } catch (error) {
+    return error instanceof Error ? error : new Error("unknown schema read error");
+  }
+}
+
+function mergeResponses(left, right) {
+  const leftObj = isPlainObject(left) ? left : {};
+  const rightObj = isPlainObject(right) ? right : {};
+
+  if (isPlainObject(left) && isPlainObject(right)) {
+    return { ...leftObj, ...rightObj };
+  }
+
+  if (isPlainObject(left)) {
+    return { ...leftObj, right };
+  }
+
+  if (isPlainObject(right)) {
+    return { ...rightObj, left };
+  }
+
+  return { left, right };
+}
+
+function isPlainObject(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function createSideHandler({ promptPath, schemaPath, label }) {
+  return async function handleSide(req, res) {
+    const { paths, model, preprocess } = req.body || {};
+
+    if (!Array.isArray(paths) || paths.length === 0) {
+      return res.status(400).json({ error: "paths must be a non-empty array of image file paths" });
+    }
+
+    const [prompt, schema] = await Promise.all([loadPromptFile(promptPath), loadJsonSchemaFile(schemaPath)]);
+
+    if (!prompt) {
+      return res.status(500).json({ error: `failed to load ${label} OCR system prompt` });
+    }
+
+    if (schema instanceof Error) {
+      return res.status(500).json({ error: `failed to load ${label} OCR schema: ${schema.message}` });
+    }
+
+    const preprocessOptions = resolvePreprocess(preprocess);
+
+    let images;
+    try {
+      images = await Promise.all(paths.map((imagePath) => readImageAsDataUrl(imagePath, preprocessOptions)));
+    } catch (error) {
+      return res.status(400).json({ error: `failed to read images: ${error.message}` });
+    }
+
+    try {
+      const result = await callLmStudio({ prompt, images, schema: schema || defaultJsonSchema, model });
+      const parsed = parseJsonContent(extractContent(result.data));
+      const postProcessed = applyPostprocessRules(parsed, postProcessRules);
+      const filtered = filterResponseByRequired(postProcessed, requiredResponseMask);
+      return res.json(filtered);
+    } catch (error) {
+      return res
+        .status(error.status || 502)
+        .json({ error: error.message || "lm studio request error", details: error.details || error.message });
+    }
+  };
+}
+
 module.exports = {
   handleOcrJson,
+  handleOcrHalfJson,
+  handleOcrLeftJson,
+  handleOcrRightJson,
   handleOcrJsonCrop,
 };

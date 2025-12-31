@@ -1,7 +1,8 @@
 {
     "insured": {
         "name": {
-            "raw_full_name_text": false,
+            "raw_full_name_lines": false,
+            "raw_full_name_text": true,
             "english_surname": true,
             "english_given_name": true,
             "chinese_name": true
@@ -22,8 +23,8 @@
         "identity": {
             "is_hk_permanent_resident": true,
             "is_non_hk_permanent_resident": true,
-            "raw_line_3_id_text": true,
-            "raw_line_4_passport_text": true,
+            "raw_line_3_id_text": false,
+            "raw_line_4_passport_text": false,
             "hk_id_card_no_or_birth_certificate_no": true,
             "non_hk_permanent_id": true,
             "passport_no_or_birth_certificate_no": true
@@ -50,6 +51,8 @@
     },
     "policyholder": {
         "name": {
+            "raw_full_name_lines": false,
+            "raw_full_name_text": true,
             "english_surname": true,
             "english_given_name": true,
             "chinese_name": true
@@ -67,6 +70,8 @@
         },
         "nationality": true,
         "identity": {
+            "is_hk_permanent_resident": true,
+            "is_non_hk_permanent_resident": true,
             "hk_id_card_no": true,
             "non_hk_permanent_id": true,
             "passport_no": true,

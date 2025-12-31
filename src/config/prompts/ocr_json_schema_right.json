@@ -1,0 +1,466 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AXA A1 OCR Extraction Schema (Policyholder Right)",
+  "type": "object",
+  "additionalProperties": false,
+  "description": "This form for RIGHT = policyholder, Extract values ONLY from the RIGHT side. Do not mix sides.",
+  "properties": {
+    "policyholder": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "RIGHT column 建議持有人 (Policyholder). FIRST copy the text exactly as seen in the name box into raw_full_name_text. THEN split ONLY from that text. NEVER invent missing English words or Chinese characters.",
+      "properties": {
+        "name": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Item 1 (RIGHT): Policyholder name fields.",
+          "properties": {
+             "raw_full_name_lines": {
+  "type": "array",
+  "items": { "type": "string", "maxLength": 40 },
+  "maxItems": 6,
+  "description": "Copy each visible line in reading order. Do not merge or transliterate."
+},
+
+                "raw_full_name_text": {
+                "anyOf": [
+                    { "type": "null" },
+                    {
+                    "type": "string",
+                    "description": "COPY EXACTLY what is visible in the name box area (English/Chinese/parentheses). If only 'LI' is visible, output 'LI'. If only '李' is visible, output '李'. If nothing visible, null.",
+                    "pattern": "^.{0,80}$"
+                    }
+                ]
+                },
+
+                "english_surname": {
+                "anyOf": [
+                    { "type": "null" },
+                    { "type": "string", "pattern": "^[A-Za-z][A-Za-z .'-]{0,39}$" }
+                ],
+                "description": "Derive ONLY from raw_full_name_text. If there are English letters, set this to the FIRST English token that is actually visible (e.g., 'LI'). If no English letters, null. DO NOT guess missing surname."
+                },
+
+                "english_given_name": {
+                "anyOf": [
+                    { "type": "null" },
+                    { "type": "string", "pattern": "^[A-Za-z][A-Za-z .'-]{0,39}$" }
+                ],
+                "description": "Derive ONLY from raw_full_name_text. Use remaining English tokens AFTER english_surname. If no additional English tokens are clearly visible, MUST be null. DO NOT infer/expand given name."
+                },
+
+                "chinese_name": {
+                "anyOf": [
+                    { "type": "null" },
+                    { "type": "string", "pattern": "^[\\u4E00-\\u9FFF·．]{1,40}$" }
+                ],
+                "description": "Derive ONLY from raw_full_name_text. Keep ONLY the Chinese characters that are actually visible. If only one character (e.g., '李') is visible, output only that. MUST NOT add extra characters."
+                }
+            },
+            "required": ["raw_full_name_lines", "raw_full_name_text", "english_surname", "english_given_name", "chinese_name"]
+        },
+        "gender": {
+          "type": "object",
+          "description": "Item 2 (RIGHT): Gender checkbox. Output 'male' or 'female' only if clearly checked; otherwise ''.",
+          "properties": {
+            "男性": {
+              "type": "boolean",
+              "description": "true if '男性' checkbox is clearly checked; false otherwise."
+            },
+            "女性": {
+              "type": "boolean",
+              "description": "true if '女性' checkbox is clearly checked; false otherwise."
+            }
+          },
+          "required": [
+            "男性",
+            "女性"
+          ]
+        },
+        "date_of_birth_ymd": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "additionalProperties": false,
+          "description": "Item 3 (RIGHT / Policyholder 建議持有人): Date of birth as ONE string in format 'YYYY-MM-DD'. Read ONLY the RIGHT column 年 / 月 / 日 boxes. RULES: (1) Extract digits only, then format as YYYY-MM-DD (month/day must be 2 digits, pad with leading zero if needed). (2) If ANY of the three boxes is blank OR the RIGHT column has no handwriting at all, output null. (3) NEVER reuse values from the LEFT column. (4) NEVER output placeholders such as 'N/A', 'NA', '-', or 'unknown'.",
+          "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"
+        },
+        "date_of_birth": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Item 3 (RIGHT / Policyholder 建議持有人): Date of birth. Read ONLY the three boxes 年 / 月 / 日 on the RIGHT column. DO NOT read or reuse anything from the LEFT column. DIGITS RULE: extract digits only (0–9). NULL RULE: output null ONLY if the box is truly empty (no ink) OR the digit is completely not present. If there is visible ink/digits in the box, you MUST output the best matching digit(s) (do not output null due to low confidence). You MUST zoom/mentally focus on each of the 3 boxes one-by-one before deciding null. FORBIDDEN: 'N/A', 'NA', '-', 'unknown' or any placeholder text.",
+          "properties": {
+            "year": {
+              "anyOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string",
+                  "pattern": "^[0-9]{4}$"
+                }
+              ],
+              "description": "Item 3 (RIGHT / Policyholder) 年: exactly 4 digits (YYYY) if visible, else null."
+            },
+            "month": {
+              "anyOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string",
+                  "pattern": "^(0?[1-9]|1[0-2])$"
+                }
+              ],
+              "description": "Item 3 (RIGHT / Policyholder) 月: 1–12 (digits only) if visible, else null."
+            },
+            "day": {
+              "anyOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string",
+                  "pattern": "^(0?[1-9]|[12][0-9]|3[01])$"
+                }
+              ],
+              "description": "Item 3 (RIGHT / Policyholder) 日: 1–31 (digits only) if visible, else null."
+            }
+          },
+          "required": [
+            "year",
+            "month",
+            "day"
+          ]
+        },
+        "place_of_birth": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Item 4 (RIGHT): Place of birth.",
+          "properties": {
+            "city": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Item 4 (RIGHT): Place of birth - city. Copy exactly."
+            },
+            "country": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Item 4 (RIGHT): Place of birth - country. Copy exactly."
+            }
+          },
+          "required": [
+            "city",
+            "country"
+          ]
+        },
+        "nationality": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Item 5 (RIGHT): Nationality. Copy exactly."
+        },
+        "identity": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Item 6 (RIGHT): Identity fields for policyholder. Fill ONLY what is present; leave others null.",
+          "properties": {
+            "is_hk_permanent_resident": {
+                "type": ["boolean", "null"],
+                "description": "Item 6 (LEFT): Checkbox square immediately BEFORE the printed text '香港永久居民'. Set true ONLY if there is a visible tick/mark INSIDE THAT square. If the tick is on the other line, this MUST be false."
+            },
+            "is_non_hk_permanent_resident": {
+                "type": ["boolean", "null"],
+                "description": "Item 6 (LEFT): Checkbox square immediately BEFORE the printed text '非香港永久居民'. Set true ONLY if there is a visible tick/mark INSIDE THAT square. If the tick is on the other line, this MUST be false."
+            },
+
+            "raw_line_3_id_text": {
+                "anyOf": [
+                { "type": "null" },
+                { "type": "string", "pattern": "^[0-9]{6,20}$" }
+                ],
+                "description": "RAW line ③: Copy ONLY the handwritten/typed ID NUMBER itself (digits only). Do NOT copy printed labels such as '非香港永久居民...' If no digits visible, null."
+            },
+
+            "raw_line_4_passport_text": {
+                "anyOf": [
+                { "type": "null" },
+                { "type": "string", "pattern": "^[A-Z0-9]{4,20}$" }
+                ],
+                "description": "RAW line ④: Copy ONLY the handwritten/typed PASSPORT/BIRTH CERTIFICATE NUMBER itself (letters/digits). Do NOT copy printed labels. If blank, null."
+            },
+
+            "hk_id_card_no": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Item 6 (RIGHT): HKID card number (香港身份證號碼)."
+            },
+            "non_hk_permanent_id": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Item 6 (RIGHT): Non-HK permanent ID number (if applicable)."
+            },
+            "passport_no": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Item 6 (RIGHT): Passport number."
+            },
+            "is_business_id": {
+              "type": [
+                "boolean",
+                "null"
+              ],
+              "description": "Item 6 (RIGHT): Business ID checkbox (if the policyholder is a business). true if clearly checked, false if clearly unchecked, null if not present/unclear."
+            },
+            "business_no": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Item 6 (RIGHT): Business registration number (if applicable)."
+            }
+          },
+          "required": [
+            "is_hk_permanent_resident",
+            "is_non_hk_permanent_resident",
+            "raw_line_3_id_text",
+            "raw_line_4_passport_text",
+            "hk_id_card_no",
+            "non_hk_permanent_id",
+            "passport_no",
+            "is_business_id",
+            "business_no"
+          ]
+        },
+        "relation_with_proposed_insured": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Item 7 (RIGHT): Relationship with proposed insured. Copy exactly as written/selected."
+        },
+        "employee_name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Item 8 (RIGHT): Employer/Company name (僱主名稱). Copy exactly."
+        },
+        "office_location": {
+          "description": "Item 9 (RIGHT): Office Location. The handwriting for Item 9 may be either (A) one combined block in the long address line area, or (B) split per label. You MUST choose the correct mode. Do NOT copy text from LEFT (insured) column.",
+          "oneOf": [
+            {
+              "title": "Item9RightCombinedBlock",
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "address_layout_mode": {
+                  "type": "string",
+                  "const": "combined_block"
+                },
+                "flat_or_unit": {
+                  "type": "null"
+                },
+                "floor": {
+                  "type": "null"
+                },
+                "block": {
+                  "type": "null"
+                },
+                "building_or_estate_name": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "street_name_and_number": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "city_or_district": {
+                  "type": "null"
+                },
+                "postal_code": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "country": {
+                  "type": "null"
+                }
+              },
+              "required": [
+                "address_layout_mode",
+                "flat_or_unit",
+                "floor",
+                "block",
+                "building_or_estate_name",
+                "street_name_and_number",
+                "city_or_district",
+                "postal_code",
+                "country"
+              ]
+            },
+            {
+              "title": "Item9RightSplitByLabels",
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "address_layout_mode": {
+                  "type": "string",
+                  "const": "split_by_labels"
+                },
+                "flat_or_unit": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "floor": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "block": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "building_or_estate_name": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "street_name_and_number": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "city_or_district": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "postal_code": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "country": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "address_layout_mode",
+                "flat_or_unit",
+                "floor",
+                "block",
+                "building_or_estate_name",
+                "street_name_and_number",
+                "city_or_district",
+                "postal_code",
+                "country"
+              ]
+            }
+          ]
+        },
+        "nature_of_employee_business": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Item 10 (RIGHT): Nature of employer business (業務性質/工作性質). Copy exactly."
+        },
+        "job": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Item 11 (RIGHT): Job information.",
+          "properties": {
+            "title": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Item 11 (RIGHT): Job title (職銜/職業). Copy exactly."
+            },
+            "duties": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Item 11 (RIGHT): Job duties (職責). Copy exactly."
+            }
+          },
+          "required": [
+            "title",
+            "duties"
+          ]
+        },
+        "education": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Item 12 (RIGHT): Education checkbox. Output '小學或以下' or '中學/預科' or '大專或以上' only if clearly checked; otherwise ''.",
+          "properties": {
+            "小學或以下": {
+              "type": "boolean",
+              "description": "true if '小學或以下' checkbox is clearly checked; false otherwise."
+            },
+            "中學/預科": {
+              "type": "boolean",
+              "description": "true if '中學/預科' checkbox is clearly checked; false otherwise."
+            },
+            "大專或以上": {
+              "type": "boolean",
+              "description": "true if '大專或以上' checkbox is clearly checked; false otherwise."
+            }
+          },
+          "required": [
+            "小學或以下",
+            "中學/預科",
+            "大專或以上"
+          ]
+        }
+      },
+      "required": [
+        "name",
+        "gender",
+        "date_of_birth_ymd",
+        "date_of_birth",
+        "place_of_birth",
+        "nationality",
+        "identity",
+        "relation_with_proposed_insured",
+        "employee_name",
+        "office_location",
+        "nature_of_employee_business",
+        "job",
+        "education"
+      ]
+    }
+  },
+  "required": ["policyholder"]
+}

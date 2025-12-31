@@ -7,18 +7,47 @@
     ]
   },
   {
-    "if": { "path": "insured.identity.is_hk_permanent_resident", "equals": true },
-    "when_empty": ["insured.identity.non_hk_permanent_id"],
-    "when_not_empty": ["insured.identity.raw_line_3_id_text"],
+    "if": { "path": "insured.identity.is_non_hk_permanent_resident", "equals": true },
     "set_from": {
       "source": "insured.identity.raw_line_3_id_text",
-      "target": "insured.identity.non_hk_permanent_id"
+      "target": "insured.identity.non_hk_permanent_id",
+      "allow_null": true
     }
   },
   {
     "if": { "path": "insured.identity.is_non_hk_permanent_resident", "equals": true },
-    "set_null": ["insured.identity.hk_id_card_no_or_birth_certificate_no"]
+    "set_from": {
+      "source": "insured.identity.raw_line_4_passport_text",
+      "target": "insured.identity.passport_no_or_birth_certificate_no",
+      "allow_null": true
+    }
   },
+
+
+  {
+    "if": { "path": "policyholder.identity.is_hk_permanent_resident", "equals": true },
+    "set_null": [
+      "policyholder.identity.non_hk_permanent_id",
+      "policyholder.identity.passport_no_or_birth_certificate_no"
+    ]
+  },
+  {
+    "if": { "path": "policyholder.identity.is_non_hk_permanent_resident", "equals": true },
+    "set_from": {
+      "source": "policyholder.identity.raw_line_3_id_text",
+      "target": "policyholder.identity.non_hk_permanent_id",
+      "allow_null": true
+    }
+  },
+  {
+    "if": { "path": "policyholder.identity.is_non_hk_permanent_resident", "equals": true },
+    "set_from": {
+      "source": "policyholder.identity.raw_line_4_passport_text",
+      "target": "policyholder.identity.passport_no_or_birth_certificate_no",
+      "allow_null": true
+    }
+  },
+
   {
     "if": { "path": "insured.date_of_birth_ymd", "not_empty": true },
     "when_empty": [
@@ -50,5 +79,12 @@
         "day": "policyholder.date_of_birth.day"
       }
     }
+  },
+  {
+    "if": {
+      "path": "insured.office_location.building_or_estate_name",
+      "equals": "大廈或屋邨名稱"
+    },
+    "set_null": ["insured.office_location.building_or_estate_name"]
   }
 ]

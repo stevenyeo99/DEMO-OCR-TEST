@@ -3,7 +3,7 @@
         "name": {
             "english_surname": "ZHANG",
             "english_given_name": "YU",
-            "chinese_name": "张宇"
+            "chinese_name": "張宇"
         },
         "gender": {
             "男性": true,
@@ -27,17 +27,17 @@
             "non_hk_permanent_id": "21070319780908",
             "passport_no_or_birth_certificate_no": "C59277"
         },
-        "relation_with_proposed_insured": "不适用",
+        "relation_with_proposed_insured": "不適用",
         "employee_name": "锦州腾达汽车百货",
-        "contact": {
-            "flat_or_unit": "辽宁省锦州市凌河区",
-            "floor": "恒升现代城29号楼",
-            "block": "大厦或屋邨名",
-            "building_name": "恒升现代城29号楼",
-            "district": "辽宁省锦州市凌河区",
-            "contact_person": "汽车用品零售",
-            "telephone_no": "总经理",
-            "email_address": "管理"
+        "office_location": {
+            "flat_or_unit": null,
+            "floor": null,
+            "block": null,
+            "building_or_estate_name": "辽宁省锦州市凌河区恒升现代城29号楼",
+            "street_name_and_number": null,
+            "city_or_district": null,
+            "postal_code": null,
+            "country": null
         },
         "nature_of_employee_business": "汽车用品零售",
         "job": {
@@ -80,15 +80,15 @@
         },
         "relation_with_proposed_insured": null,
         "employee_name": null,
-        "contact": {
+        "office_location": {
             "flat_or_unit": null,
             "floor": null,
             "block": null,
-            "building_name": null,
-            "district": null,
-            "contact_person": null,
-            "telephone_no": null,
-            "email_address": null
+            "building_or_estate_name": null,
+            "street_name_and_number": null,
+            "city_or_district": null,
+            "postal_code": null,
+            "country": null
         },
         "nature_of_employee_business": null,
         "job": {

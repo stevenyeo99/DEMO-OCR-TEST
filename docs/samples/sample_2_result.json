@@ -29,15 +29,15 @@
         },
         "relation_with_proposed_insured": "不適用",
         "employee_name": "兒童",
-        "contact": {
+        "office_location": {
             "flat_or_unit": null,
             "floor": null,
             "block": null,
-            "building_name": "蕪湖經濟技術開發區",
-            "district": "鳳鳴湖北路",
-            "contact_person": null,
-            "telephone_no": null,
-            "email_address": null
+            "building_or_estate_name": "蕪湖經濟技術開發區",
+            "street_name_and_number": "鳳鳴湖北路",
+            "city_or_district": null,
+            "postal_code": null,
+            "country": null
         },
         "nature_of_employee_business": "汽車制造",
         "job": {
@@ -80,15 +80,15 @@
         },
         "relation_with_proposed_insured": "不適用",
         "employee_name": null,
-        "contact": {
+        "office_location": {
             "flat_or_unit": null,
             "floor": null,
             "block": null,
-            "building_name": null,
-            "district": null,
-            "contact_person": null,
-            "telephone_no": null,
-            "email_address": null
+            "building_or_estate_name": "毅昌科技有限公司",
+            "street_name_and_number": null,
+            "city_or_district": null,
+            "postal_code": null,
+            "country": null
         },
         "nature_of_employee_business": null,
         "job": {
