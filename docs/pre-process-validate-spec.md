@@ -71,6 +71,8 @@ Notes:
 - `quality` can be a number to set only `blurThreshold`.
 - `quality.brightness` can be set to `false` to disable brightness checks.
 - `quality.document` can be set to `{ "enabled": false }` to disable document framing checks.
+- `/ocr/json` accepts `quality` to run a preflight scan; images that fail are skipped.
+- `/ocr/json` supports `qualityReport: true` to include preflight details in the response.
 
 ## Response Body
 

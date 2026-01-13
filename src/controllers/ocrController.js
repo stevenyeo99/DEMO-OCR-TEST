@@ -7,6 +7,7 @@ const { callLmStudio } = require("../services/lmService");
 const { preprocessImage } = require("../services/imagePreprocess");
 const { evaluateImageQuality, defaultQualityOptions } = require("../services/imageQuality");
 const { convertPdfToImages, defaultPdfImageOptions } = require("../services/pdfToImages");
+const { preflightImages } = require("../services/ocrPreflight");
 const { cropTopBottom, defaultCropOptions } = require("../services/imageCrop");
 const requiredResponseMask = require("../config/prompts/ocr_json_required_response.json");
 const postProcessRules = require("../config/prompts/ocr_json_postprocess_rules.json");
@@ -16,7 +17,7 @@ const LEFT_SCHEMA_PATH = path.join(__dirname, "../config/prompts/ocr_json_schema
 const RIGHT_SCHEMA_PATH = path.join(__dirname, "../config/prompts/ocr_json_schema_right.json");
 
 async function handleOcrJson(req, res) {
-  const { paths, systemPrompt, jsonSchema, model, preprocess } = req.body || {};
+  const { paths, systemPrompt, jsonSchema, model, preprocess, quality, qualityReport } = req.body || {};
 
   if (!Array.isArray(paths) || paths.length === 0) {
     return res.status(400).json({ error: "paths must be a non-empty array of image file paths" });
@@ -28,10 +29,25 @@ async function handleOcrJson(req, res) {
   }
 
   const preprocessOptions = resolvePreprocess(preprocess);
+  const qualityOptions = resolveQualityOptions(quality);
 
   let images;
+  let preflight;
   try {
-    images = await Promise.all(paths.map((imagePath) => readImageAsDataUrl(imagePath, preprocessOptions)));
+    preflight = await preflightImages(paths, { qualityOptions });
+  } catch (error) {
+    return res.status(400).json({ error: `preflight failed: ${error.message}` });
+  }
+
+  if (!preflight.acceptedPaths.length) {
+    return res.status(400).json({
+      error: "no images passed quality checks",
+      details: preflight.results,
+    });
+  }
+
+  try {
+    images = await Promise.all(preflight.acceptedPaths.map((imagePath) => readImageAsDataUrl(imagePath, preprocessOptions)));
   } catch (error) {
     return res.status(400).json({ error: `failed to read images: ${error.message}` });
   }
@@ -44,6 +60,15 @@ async function handleOcrJson(req, res) {
     const parsedContent = parseJsonContent(content);
     const postProcessed = applyPostprocessRules(parsedContent, postProcessRules);
     const filtered = filterResponseByRequired(postProcessed, requiredResponseMask);
+    if (qualityReport) {
+      return res.json({
+        result: filtered,
+        quality: {
+          accepted: preflight.acceptedPaths,
+          results: preflight.results,
+        },
+      });
+    }
     return res.json(filtered);
   } catch (error) {
     return res

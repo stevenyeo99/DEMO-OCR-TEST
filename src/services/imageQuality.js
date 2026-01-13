@@ -9,6 +9,10 @@ const defaultQualityOptions = {
     excellentAt: 2500,
   },
   blurThreshold: 120, // variance of Laplacian; higher means stricter
+  blurGuard: {
+    minEdgePixelRatio: 0.01,
+    minCoverage: 0.1,
+  },
   brightness: {
     minMean: 60,
     maxMean: 200,
@@ -27,7 +31,7 @@ const defaultQualityOptions = {
     minAspectRatio: 0.6,
     maxAspectRatio: 0.9,
     sideStrip: {
-      enabled: true,
+      enabled: false,
       bandRatio: 0.06,
       boundaryThreshold: 0.22,
       contentThreshold: 0.12,
@@ -69,9 +73,6 @@ async function evaluateImageQuality(buffer, options = {}) {
   }
 
   const blurScore = await calculateLaplacianVariance(image);
-  if (typeof opts.blurThreshold === "number" && blurScore < opts.blurThreshold) {
-    reasons.push(`blur_score_below_threshold:${blurScore.toFixed(2)}`);
-  }
 
   const brightnessResult = await analyzeBrightness(image, opts.brightness);
   if (brightnessResult.reason) {
@@ -84,6 +85,21 @@ async function evaluateImageQuality(buffer, options = {}) {
   }
   if (documentResult.warning) {
     warnings.push(documentResult.warning);
+  }
+
+  const blurGuard = opts.blurGuard || {};
+  const edgePixelRatio = documentResult.metrics ? documentResult.metrics.edgePixelRatio : null;
+  const coverageRatio = documentResult.metrics ? documentResult.metrics.coverageRatio : null;
+  const blurCheckAllowed =
+    !(typeof blurGuard.minEdgePixelRatio === "number" &&
+      typeof edgePixelRatio === "number" &&
+      edgePixelRatio < blurGuard.minEdgePixelRatio) &&
+    !(typeof blurGuard.minCoverage === "number" &&
+      typeof coverageRatio === "number" &&
+      coverageRatio < blurGuard.minCoverage);
+
+  if (blurCheckAllowed && typeof opts.blurThreshold === "number" && blurScore < opts.blurThreshold) {
+    reasons.push(`blur_score_below_threshold:${blurScore.toFixed(2)}`);
   }
 
   return {
@@ -305,8 +321,9 @@ async function analyzeDocumentFraming(image, options) {
   const aspectRatio = bboxWidth / bboxHeight;
 
   let reason = null;
+  let warning = null;
   if (coverageRatio < opts.minCoverage) {
-    reason = `document_coverage_low:${coverageRatio.toFixed(3)}`;
+    warning = `document_coverage_low:${coverageRatio.toFixed(3)}`;
   } else if (
     typeof opts.minAspectRatio === "number" &&
     typeof opts.maxAspectRatio === "number" &&
@@ -328,7 +345,9 @@ async function analyzeDocumentFraming(image, options) {
     (aspectRatio < opts.minAspectRatio || aspectRatio > opts.maxAspectRatio);
   const cropped = croppedByCoverage || croppedByAsymmetry || croppedByAspect || sideStripResult.detected;
   const tightFraming = coverageRatio > opts.maxCoverage && insetRatio < opts.minInsetRatio;
-  const warning = tightFraming ? "document_tight_framing" : null;
+  if (tightFraming) {
+    warning = "document_tight_framing";
+  }
 
   return {
     reason,
