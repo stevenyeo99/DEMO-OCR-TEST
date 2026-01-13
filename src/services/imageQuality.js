@@ -75,7 +75,7 @@ async function evaluateImageQuality(buffer, options = {}) {
 
   const brightnessResult = await analyzeBrightness(image, opts.brightness);
   if (brightnessResult.reason) {
-    reasons.push(brightnessResult.reason);
+    warnings.push(brightnessResult.reason);
   }
 
   const documentResult = await analyzeDocumentFraming(image, opts.document);

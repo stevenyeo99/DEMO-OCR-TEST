@@ -187,7 +187,7 @@ Defaults:
 - `maxDarkPercent`: 0.25
 - `maxBrightPercent`: 0.2
 
-Failure reasons (first match in order):
+Warnings (first match in order):
 - `brightness_mean_low:<mean>`
 - `brightness_mean_high:<mean>`
 - `brightness_too_dark_pixels:<fraction>`

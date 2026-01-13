@@ -6,6 +6,7 @@ const { defaultSystemPrompt, defaultJsonSchema } = require("../config/ocrConfig"
 const { callLmStudio } = require("../services/lmService");
 const { preprocessImage } = require("../services/imagePreprocess");
 const { evaluateImageQuality, defaultQualityOptions } = require("../services/imageQuality");
+const { convertPdfToImages, defaultPdfImageOptions } = require("../services/pdfToImages");
 const { cropTopBottom, defaultCropOptions } = require("../services/imageCrop");
 const requiredResponseMask = require("../config/prompts/ocr_json_required_response.json");
 const postProcessRules = require("../config/prompts/ocr_json_postprocess_rules.json");
@@ -82,6 +83,28 @@ async function handleOcrQuality(req, res) {
     ok: results.every((result) => result.ok),
     images: results,
   });
+}
+
+async function handleOcrImages(req, res) {
+  const { paths, dpi } = req.body || {};
+
+  if (!Array.isArray(paths) || paths.length === 0) {
+    return res.status(400).json({ error: "paths must be a non-empty array of PDF file paths" });
+  }
+
+  const pdfOptions = resolvePdfOptions(dpi);
+
+  try {
+    const results = await Promise.all(paths.map((pdfPath) => convertPdfToImages(pdfPath, pdfOptions)));
+    return res.json({
+      ok: true,
+      dpi: pdfOptions.dpi,
+      outputDir: pdfOptions.outputDir,
+      files: results,
+    });
+  } catch (error) {
+    return res.status(400).json({ error: error.message || "failed to convert pdf to images" });
+  }
 }
 
 async function handleOcrHalfJson(req, res) {
@@ -255,6 +278,11 @@ function resolveQualityOptions(raw) {
     return merged;
   }
   return { ...defaultQualityOptions };
+}
+
+function resolvePdfOptions(dpi) {
+  const resolvedDpi = Number.isFinite(dpi) ? dpi : defaultPdfImageOptions.dpi;
+  return { ...defaultPdfImageOptions, dpi: resolvedDpi };
 }
 
 async function readImageAsDataUrl(imagePath, preprocessOptions = null) {
@@ -583,6 +611,7 @@ function createSideHandler({ promptPath, schemaPath, label }) {
 module.exports = {
   handleOcrJson,
   handleOcrQuality,
+  handleOcrImages,
   handleOcrHalfJson,
   handleOcrLeftJson,
   handleOcrRightJson,
