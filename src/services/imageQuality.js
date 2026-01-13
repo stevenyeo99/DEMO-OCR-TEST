@@ -3,8 +3,11 @@
 const sharp = require("sharp");
 
 const defaultQualityOptions = {
-  minWidth: 1000,
-  minHeight: 1000,
+  sizeTiers: {
+    rejectBelow: 1000,
+    warnBelow: 1500,
+    excellentAt: 2500,
+  },
   blurThreshold: 120, // variance of Laplacian; higher means stricter
   brightness: {
     minMean: 60,
@@ -53,14 +56,16 @@ async function evaluateImageQuality(buffer, options = {}) {
   const metadata = await image.metadata();
   const width = metadata.width || 0;
   const height = metadata.height || 0;
+  const shortEdge = Math.min(width, height);
 
   const reasons = [];
   const warnings = [];
-  if (opts.minWidth && width < opts.minWidth) {
-    reasons.push(`width_below_min:${width}`);
+  const sizeTier = classifySizeTier(shortEdge, opts.sizeTiers);
+  if (sizeTier.reason) {
+    reasons.push(sizeTier.reason);
   }
-  if (opts.minHeight && height < opts.minHeight) {
-    reasons.push(`height_below_min:${height}`);
+  if (sizeTier.warning) {
+    warnings.push(sizeTier.warning);
   }
 
   const blurScore = await calculateLaplacianVariance(image);
@@ -88,6 +93,8 @@ async function evaluateImageQuality(buffer, options = {}) {
     metrics: {
       width,
       height,
+      shortEdge,
+      sizeTier: sizeTier.tier,
       blurScore,
       brightness: brightnessResult.metrics,
       document: documentResult.metrics,
@@ -137,6 +144,24 @@ async function calculateLaplacianVariance(image) {
 
   const mean = sum / count;
   return sumSq / count - mean * mean;
+}
+
+function classifySizeTier(shortEdge, tiers = {}) {
+  const opts = { ...defaultQualityOptions.sizeTiers, ...(tiers || {}) };
+  if (!shortEdge || shortEdge <= 0) {
+    return { tier: "unknown", reason: "size_unavailable", warning: null };
+  }
+
+  if (shortEdge < opts.rejectBelow) {
+    return { tier: "reject", reason: `size_too_small:${shortEdge}`, warning: null };
+  }
+  if (shortEdge < opts.warnBelow) {
+    return { tier: "warn", reason: null, warning: `size_low:${shortEdge}` };
+  }
+  if (shortEdge >= opts.excellentAt) {
+    return { tier: "excellent", reason: null, warning: null };
+  }
+  return { tier: "pass", reason: null, warning: null };
 }
 
 async function analyzeBrightness(image, options) {

@@ -248,6 +248,10 @@ function resolveQualityOptions(raw) {
       }
     }
 
+    if (raw.sizeTiers && typeof raw.sizeTiers === "object") {
+      merged.sizeTiers = { ...defaultQualityOptions.sizeTiers, ...raw.sizeTiers };
+    }
+
     return merged;
   }
   return { ...defaultQualityOptions };

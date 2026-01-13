@@ -16,8 +16,11 @@ This document describes the image quality validation performed by the OCR pre-pr
   "paths": ["/abs/or/relative/path/to/image.jpg"],
   "preprocess": true,
   "quality": {
-    "minWidth": 1000,
-    "minHeight": 1000,
+    "sizeTiers": {
+      "rejectBelow": 1000,
+      "warnBelow": 1500,
+      "excellentAt": 2500
+    },
     "blurThreshold": 120,
     "brightness": {
       "minMean": 60,
@@ -86,6 +89,8 @@ Notes:
       "metrics": {
         "width": 1200,
         "height": 1600,
+        "shortEdge": 1200,
+        "sizeTier": "pass",
         "blurScore": 240.5,
         "brightness": {
           "mean": 132.4,
@@ -132,6 +137,7 @@ Notes:
 - `ok` at the top-level is `true` only if all images pass.
 - Each image includes `reasons` for rejection; empty means pass.
 - Each image includes `warnings` for non-fatal issues (informational only).
+- `sizeTier` is one of `reject`, `warn`, `pass`, `excellent`, `unknown`.
 
 ## Validation Checks
 
@@ -140,12 +146,15 @@ Notes:
 Purpose: reject images that are too small for reliable OCR.
 
 Default thresholds:
-- `minWidth`: 1000
-- `minHeight`: 1000
+- `sizeTiers.rejectBelow`: 1000
+- `sizeTiers.warnBelow`: 1500
+- `sizeTiers.excellentAt`: 2500
 
 Failure reasons:
-- `width_below_min:<actualWidth>`
-- `height_below_min:<actualHeight>`
+- `size_too_small:<shortEdge>`
+
+Warnings:
+- `size_low:<shortEdge>` (still processed)
 
 ### 2) Blurriness (Laplacian Variance)
 
