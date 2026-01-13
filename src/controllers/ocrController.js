@@ -5,6 +5,7 @@ const path = require("path");
 const { defaultSystemPrompt, defaultJsonSchema } = require("../config/ocrConfig");
 const { callLmStudio } = require("../services/lmService");
 const { preprocessImage } = require("../services/imagePreprocess");
+const { evaluateImageQuality, defaultQualityOptions } = require("../services/imageQuality");
 const { cropTopBottom, defaultCropOptions } = require("../services/imageCrop");
 const requiredResponseMask = require("../config/prompts/ocr_json_required_response.json");
 const postProcessRules = require("../config/prompts/ocr_json_postprocess_rules.json");
@@ -48,6 +49,39 @@ async function handleOcrJson(req, res) {
       .status(error.status || 502)
       .json({ error: error.message || "lm studio request error", details: error.details || error.message });
   }
+}
+
+async function handleOcrQuality(req, res) {
+  const { paths, preprocess, quality } = req.body || {};
+
+  if (!Array.isArray(paths) || paths.length === 0) {
+    return res.status(400).json({ error: "paths must be a non-empty array of image file paths" });
+  }
+
+  const preprocessOptions = resolvePreprocess(preprocess);
+  const qualityOptions = resolveQualityOptions(quality);
+
+  let results;
+  try {
+    results = await Promise.all(
+      paths.map(async (imagePath) => {
+        const base = await loadImageBuffer(imagePath, preprocessOptions);
+        const assessment = await evaluateImageQuality(base.buffer, qualityOptions);
+        return {
+          path: base.path,
+          savedPath: base.savedPath,
+          ...assessment,
+        };
+      })
+    );
+  } catch (error) {
+    return res.status(400).json({ error: `failed to read images: ${error.message}` });
+  }
+
+  return res.json({
+    ok: results.every((result) => result.ok),
+    images: results,
+  });
 }
 
 async function handleOcrHalfJson(req, res) {
@@ -185,6 +219,38 @@ function resolvePreprocess(raw) {
 function resolveCropOptions(raw) {
   if (raw && typeof raw === "object") return { ...defaultCropOptions, ...raw };
   return { ...defaultCropOptions };
+}
+
+function resolveQualityOptions(raw) {
+  if (raw === false || raw === null) return { ...defaultQualityOptions };
+  if (typeof raw === "number") return { ...defaultQualityOptions, blurThreshold: raw };
+  if (raw && typeof raw === "object") {
+    const merged = { ...defaultQualityOptions, ...raw };
+    if (raw.brightness === false) {
+      merged.brightness = false;
+    } else if (raw.brightness && typeof raw.brightness === "object") {
+      merged.brightness = { ...defaultQualityOptions.brightness, ...raw.brightness };
+    }
+
+    if (raw.document === false) {
+      merged.document = { ...defaultQualityOptions.document, enabled: false };
+    } else if (raw.document && typeof raw.document === "object") {
+      merged.document = { ...defaultQualityOptions.document, ...raw.document };
+      if (raw.document.multiple === false) {
+        merged.document.multiple = { ...defaultQualityOptions.document.multiple, enabled: false };
+      } else if (raw.document.multiple && typeof raw.document.multiple === "object") {
+        merged.document.multiple = { ...defaultQualityOptions.document.multiple, ...raw.document.multiple };
+      }
+      if (raw.document.sideStrip === false) {
+        merged.document.sideStrip = { ...defaultQualityOptions.document.sideStrip, enabled: false };
+      } else if (raw.document.sideStrip && typeof raw.document.sideStrip === "object") {
+        merged.document.sideStrip = { ...defaultQualityOptions.document.sideStrip, ...raw.document.sideStrip };
+      }
+    }
+
+    return merged;
+  }
+  return { ...defaultQualityOptions };
 }
 
 async function readImageAsDataUrl(imagePath, preprocessOptions = null) {
@@ -512,6 +578,7 @@ function createSideHandler({ promptPath, schemaPath, label }) {
 
 module.exports = {
   handleOcrJson,
+  handleOcrQuality,
   handleOcrHalfJson,
   handleOcrLeftJson,
   handleOcrRightJson,

@@ -26,7 +26,9 @@ function buildLmStudioRequest({ prompt, images, model, schema }) {
       { role: "user", content: contentBlocks },
     ],
     temperature: 0,
-    max_tokens: 1024,
+    top_p: 0.9,
+    top_k: 40,
+    max_tokens: 2048,
   };
 
   if (schema) {
